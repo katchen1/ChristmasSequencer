@@ -23,11 +23,15 @@ global int editWhichStep;
 1 => global float editGain;
 0 => global int editInstrument;
 0 => global int editWhichTree;
+0 => global int editTreeStatus;
+1 => global float editTempo;
 global Event editHappened;
 
 // a sequence (one of many ways to "sequence")
 float seqRate[NUM_TRACKS][NUM_STEPS];
 float seqGain[NUM_TRACKS][NUM_STEPS];
+int treeStatus[NUM_TREES];
+int nextStep[NUM_STEPS];
 int instruments[NUM_TRACKS][NUM_TREES];
 // initialize
 for( int i; i < NUM_TRACKS; i++ )
@@ -38,6 +42,12 @@ for( int i; i < NUM_TRACKS; i++ )
         1 => seqRate[i][j];
     }
 }
+for( int i; i < NUM_STEPS; i++ )
+{
+    i + 1 => nextStep[i];
+    if( nextStep[i] >= NUM_STEPS ) 0 => nextStep[i];
+}
+
 
 // sound buffers
 SndBuf bufs[NUM_TRACKS][NUM_STEPS];
@@ -80,10 +90,8 @@ while( true )
     currentStep => playheadPos;
     // advance time by duration of one beat 
     BEAT => now;
-    // increment to next chicken
-    currentStep++;
-    // wrap
-    if( currentStep >= NUM_STEPS ) 0 => currentStep;
+    // increment to next ornament
+    nextStep[currentStep] => currentStep;
 }
 
 fun void play( int whichTrack, int whichStep, float gain, float rate )
@@ -117,9 +125,10 @@ fun void listenForEdit()
     {
         // wait for event
         editHappened => now;
-        // update the gain and rate
+        // update the gain, rate, and tree on/off status
         editRate => seqRate[editWhichTrack][editWhichStep];
         editGain => seqGain[editWhichTrack][editWhichStep];
+        editTreeStatus => treeStatus[editWhichTree];
         // update the instruments
         "" => string filename;
         if( editInstrument == 0 ) "bell.wav" => filename;
@@ -131,6 +140,52 @@ fun void listenForEdit()
         {
             me.dir() + filename => bufs[editWhichTrack][editWhichTree * 8 + j].read;
             0 => bufs[editWhichTrack][editWhichTree * 8 + j].gain;
+        }
+        // adjust tempo
+        (editTempo * 400)::ms => BEAT;
+        // hopefully this will skip trees without any ornaments???
+        if( treeStatus[0] == 0 && treeStatus[1] == 0 && treeStatus[2] == 0) 
+        {
+            for( int i; i < 24; i++ ) 0 => nextStep[i];
+        }
+        else if( treeStatus[0] > 0 && treeStatus[1] == 0 && treeStatus[2] == 0 )
+        {
+            for( int i; i < 7; i++ ) i + 1 => nextStep[i];
+            for( int i; i < 17; i++ ) 0 => nextStep[i + 7];
+        }
+        else if( treeStatus[0] == 0 && treeStatus[1] > 0 && treeStatus[2] == 0 )
+        {
+            for( int i; i < 7; i++ ) i + 9 => nextStep[i + 8];
+            for( int i; i < 8; i++ ) 8 => nextStep[i];
+            for( int i; i < 9; i++ ) 8 => nextStep[i + 15];
+        }
+        else if( treeStatus[0] == 0 && treeStatus[1] == 0 && treeStatus[2] > 0 )
+        {
+            for( int i; i < 7; i++ ) i + 17 => nextStep[i + 16];
+            for( int i; i < 16; i++ ) 16 => nextStep[i];
+        }
+        else if( treeStatus[0] > 0 && treeStatus[1] > 0 && treeStatus[2] == 0 )
+        {
+            for( int i; i < 15; i++ ) i + 1 => nextStep[i];
+            for( int i; i < 9; i++ ) 0 => nextStep[i + 15];
+        }
+        else if( treeStatus[0] > 0 && treeStatus[1] == 0 && treeStatus[2] > 0 )
+        {
+            for( int i; i < 7; i++ ) i + 1 => nextStep[i];
+            for( int i; i < 9; i++ ) 16 => nextStep[i + 7];
+            for( int i; i < 7; i++ ) i + 17 => nextStep[i + 16];
+            0 => nextStep[23];
+        }
+        else if( treeStatus[0] == 0 && treeStatus[1] > 0 && treeStatus[2] > 0 )
+        {
+            for( int i; i < 8; i++ ) 8 => nextStep[i];
+            for( int i; i < 15; i++ ) i + 9 => nextStep[i + 8];
+            8 => nextStep[23];
+        }
+        else if( treeStatus[0] > 0 && treeStatus[1] > 0 && treeStatus[2] > 0 )
+        {
+            for( int i; i < 23; i++ ) i + 1 => nextStep[i];
+            0 => nextStep[23];
         }
     }
 }

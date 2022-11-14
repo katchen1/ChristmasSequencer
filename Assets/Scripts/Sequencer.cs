@@ -15,6 +15,10 @@ public class Sequencer : MonoBehaviour
     public GameObject the_playheadPrefab;
     // selector prefab
     public GameObject the_selectorPrefab;
+    // stars
+    public GameObject[] the_stars;
+    // snows
+    public GameObject[] the_snows;
 
     //--------- GRAPHICS -----------
     // number of steps (MUST match NUM_STEPS in ChucK code)
@@ -64,6 +68,8 @@ public class Sequencer : MonoBehaviour
     // and is communicated to chuck using ChucK events
     private float[,] m_seqRate;
     private float[,] m_seqGain;
+    private int[] m_treeStatus;
+    private float tempo = 1f;
     // previous discrete obj number
     private int m_previousStep = -1;
 
@@ -138,6 +144,7 @@ public class Sequencer : MonoBehaviour
                 m_glows[i, j].SetActive(false);
                 // instruments
                 m_obj[i, j].GetComponent<SpriteRenderer>().sprite = instrumentImages[m_instruments[i, j/8]];
+                m_obj[i, j].GetComponent<Float>().SetY(m_obj[i, j].transform.position.y);
             }
         }
 
@@ -178,6 +185,12 @@ public class Sequencer : MonoBehaviour
                 m_seqRate[i,j] = 1.0f;
                 m_seqGain[i,j] = 0f;
             }
+        }
+        // the tree status
+        m_treeStatus = new int[NUM_TREES];
+        for (int i = 0; i < NUM_TREES; i++)
+        {
+            m_treeStatus[i] = 0;
         }
     }
 
@@ -251,6 +264,16 @@ public class Sequencer : MonoBehaviour
             }
         }
 
+        // detect tempo change
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            AdjustTempo(false);
+        }
+        else if (Input.GetKeyDown(KeyCode.B))
+        {
+            AdjustTempo(true);
+        }
+
         // update the playhead using info from ChucK's playheadPos
         float playheadPos = m_ckPlayheadPos.GetCurrentValue();
         float playheadPosSub = playheadPos % 8.0f;
@@ -280,6 +303,22 @@ public class Sequencer : MonoBehaviour
         }
         // position the selector
         PositionSelector();
+        // snow fall
+        for (int i = 0; i < the_snows.Length; i++)
+        {
+            the_snows[i].transform.position = new Vector3(
+                the_snows[i].transform.position.x,
+                the_snows[i].transform.position.y - (((-1f * tempo + 2f) - 0.5f) * 0.02f + 0.001f),
+                the_snows[i].transform.position.z
+            );
+            if (the_snows[i].transform.position.y < -13.78f) {
+                the_snows[i].transform.position = new Vector3(
+                    the_snows[i].transform.position.x,
+                    5.18f,
+                    the_snows[i].transform.position.z
+                );
+            };
+        }
     }
 
     // position selector
@@ -289,7 +328,7 @@ public class Sequencer : MonoBehaviour
         // the selected object
         GameObject o = m_obj[(int)m_selectedObj.x, (int)m_selectedObj.y];
         // translate the selector
-        m_selector.transform.position = new Vector3(o.transform.position.x, o.transform.position.y + selectorOffset, o.transform.position.z);
+        m_selector.transform.position = new Vector3(o.transform.position.x, o.GetComponent<Float>().GetY() + selectorOffset, o.transform.position.z);
     }
 
     // glow
@@ -318,7 +357,8 @@ public class Sequencer : MonoBehaviour
             }
             else
             {
-                o.transform.position = new Vector3(o.transform.position.x, o.transform.position.y + .05f, o.transform.position.z);
+                o.transform.position = new Vector3(o.transform.position.x, o.GetComponent<Float>().GetY() + .05f, o.transform.position.z);
+                o.GetComponent<Float>().SetY(o.transform.position.y);
             }
         }
         else
@@ -330,7 +370,8 @@ public class Sequencer : MonoBehaviour
             }
             else
             {
-                o.transform.position = new Vector3(o.transform.position.x, o.transform.position.y - .05f, o.transform.position.z);
+                o.transform.position = new Vector3(o.transform.position.x, o.GetComponent<Float>().GetY() - .05f, o.transform.position.z);
+                o.GetComponent<Float>().SetY(o.transform.position.y);
             }
         }
 
@@ -339,7 +380,10 @@ public class Sequencer : MonoBehaviour
         GetComponent<ChuckSubInstance>().SetInt("editWhichStep", whichStep);
         GetComponent<ChuckSubInstance>().SetFloat("editRate", m_seqRate[whichTrack, whichStep]);
         GetComponent<ChuckSubInstance>().SetFloat("editGain", m_seqGain[whichTrack, whichStep]);
+        GetComponent<ChuckSubInstance>().SetInt("editWhichTree", whichStep / 8);
         GetComponent<ChuckSubInstance>().SetInt("editInstrument", m_instruments[whichTrack, whichStep / 8]);
+        GetComponent<ChuckSubInstance>().SetInt("editTreeStatus", m_treeStatus[whichStep / 8]);
+        GetComponent<ChuckSubInstance>().SetFloat("editTempo", tempo);
         GetComponent<ChuckSubInstance>().BroadcastEvent("editHappened");
     }
 
@@ -353,11 +397,15 @@ public class Sequencer : MonoBehaviour
             {
                 m_seqGain[whichTrack, whichStep] = 1f;
                 m_obj[whichTrack, whichStep].SetActive(true);
+                m_treeStatus[whichStep / 8] += 1;
+                the_stars[whichStep / 8].GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f, 1f);
             }
             else
             {
                 m_seqGain[whichTrack, whichStep] = 0f;
                 m_obj[whichTrack, whichStep].SetActive(false);
+                m_treeStatus[whichStep / 8] -= 1;
+                the_stars[whichStep / 8].GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f, .2f);
             }
         }
 
@@ -386,7 +434,10 @@ public class Sequencer : MonoBehaviour
         GetComponent<ChuckSubInstance>().SetInt("editWhichStep", whichStep);
         GetComponent<ChuckSubInstance>().SetFloat("editRate", m_seqRate[whichTrack, whichStep]);
         GetComponent<ChuckSubInstance>().SetFloat("editGain", m_seqGain[whichTrack, whichStep]);
+        GetComponent<ChuckSubInstance>().SetInt("editWhichTree", whichStep / 8);
         GetComponent<ChuckSubInstance>().SetInt("editInstrument", m_instruments[whichTrack, whichStep / 8]);
+        GetComponent<ChuckSubInstance>().SetInt("editTreeStatus", m_treeStatus[whichStep / 8]);
+        GetComponent<ChuckSubInstance>().SetFloat("editTempo", tempo);
         GetComponent<ChuckSubInstance>().BroadcastEvent("editHappened");
     }
 
@@ -414,6 +465,26 @@ public class Sequencer : MonoBehaviour
         GetComponent<ChuckSubInstance>().SetFloat("editGain", m_seqGain[whichTrack, whichStep]);
         GetComponent<ChuckSubInstance>().SetInt("editWhichTree", whichStep / 8);
         GetComponent<ChuckSubInstance>().SetInt("editInstrument", m_instruments[whichTrack, whichStep / 8]);
+        GetComponent<ChuckSubInstance>().SetInt("editTreeStatus", m_treeStatus[whichStep / 8]);
+        GetComponent<ChuckSubInstance>().SetFloat("editTempo", tempo);
+        GetComponent<ChuckSubInstance>().BroadcastEvent("editHappened");
+    }
+
+    // adjust tempo with clamping
+    void AdjustTempo(bool increasing)
+    {
+        Debug.Log("adjust tempo " + increasing);
+        if (increasing) 
+        {
+            tempo -= 0.1f;
+            if (tempo < 0.5f) tempo = 0.5f;
+        }
+        else
+        {
+            tempo += 0.1f;
+            if (tempo > 1.5f) tempo = 1.5f;
+        }
+        GetComponent<ChuckSubInstance>().SetFloat("editTempo", tempo);
         GetComponent<ChuckSubInstance>().BroadcastEvent("editHappened");
     }
 
