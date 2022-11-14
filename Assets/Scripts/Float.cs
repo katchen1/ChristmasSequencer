@@ -6,8 +6,8 @@ public class Float : MonoBehaviour
 {
     private float y;
     private float direction = 1f; // 1 up, -1 down
-    private float range = 0.025f;
-    private float step = 0.0001f;
+    private float range = 0.035f;
+    private float step = 0.0002f;
 
     // Start is called before the first frame update
     void Start()
