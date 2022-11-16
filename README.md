@@ -10,7 +10,7 @@
 6. [Acknowledgements](#acknowledgements)
 
 ## Video Demo
-https://youtu.be/7sqIiNiLOls 
+https://youtu.be/tdWdm5IhWcs
 
 
 ## Screenshots
@@ -29,6 +29,11 @@ https://youtu.be/7sqIiNiLOls
 - Press `V/B` to change **tempo** (rate of snowfall)
 - Trees default to not playing if they have no ornaments
     - Number of active trees changes **number of steps** (0, 8, 16, 24)
+- Animations
+    - Floating ornaments
+    - Falling snow
+    - Rotating stars when the tree is active
+
         
 ## Production Build
 https://drive.google.com/file/d/1IM4saghCw59WKJcDJ8iO6rkDR2HDQLR8/view?usp=share_link
